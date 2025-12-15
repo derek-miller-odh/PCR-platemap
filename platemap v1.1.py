@@ -3,17 +3,36 @@ import datetime
 from fpdf import FPDF
 import re
 import os
+import logging
+
+logging.basicConfig(
+    filename = 'errors.log',
+    level = logging.DEBUG,
+    format= '%(asctime)s %(levelname)s %(name)s %(message)s'
+)
 
 fpath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/ABI7500 Importer/'
 ipath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/Imports/'
 ppath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/Platemaps/'
-rnumber = input('Please enter PCR run number: ')
+try:
+    rnumber = input('Please enter PCR run number: ')
+except:
+    logging.error('Error entering run number')
 reString = r"\.xlsx$"
-for file in os.listdir(fpath):
-    if re.search(reString, file):
-        fname = file
-        print(f"Found file: {fname}")
-fullpath = fpath+fname
+try:
+    flist = []
+    for file in os.listdir(fpath):
+        if re.search(reString, file):
+            flist.append(file)
+            fname = file
+            print(f"Found file: {fname}")
+    if len(flist) > 1:
+        logging.warning('Too many excel files found, please rerun with only one excel file')
+    elif len(flist) == 0:
+        logging.warning('No .xlsx file found')
+    fullpath = fpath+fname
+except:
+    logging.error("Error finding data file")
 pcols = range(1,13)
 prows = ['A','B','C','D','E','F','G','H']
 tryal = pd.read_excel(fullpath)
@@ -188,7 +207,7 @@ class Platemap:
         return self.name
 class MakeExport:
     def __init__(self, _plate):
-            self.time = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            self.time = datetime.datetime.now().strftime("%Y%m%d")
             self.plate = _plate
             tmpname = f'{rnumber}_AR-CRO-PCR-ABI-7500_{self.time} - {self.plate.name}.txt'
             tmppath = ipath+tmpname
@@ -323,7 +342,7 @@ class makePDF:
         self.cellsize = 20
         self.xstart = 13.5
         self.data = _df
-        self.name = f'{rnumber}_AR-CRO-PCR-ABI-7500_ {datetime.datetime.now().strftime("%Y%m%d%H%M%S")} - {_name}'
+        self.name = f'{rnumber}_AR-CRO-PCR-ABI-7500_ {datetime.datetime.now().strftime("%Y%m%d")} - {_name}'
         self.cellorigins = [(15*x+13.5,15*y) for x in range(3,15) for y in range(3,11)]
         self.pdf = FPDF('L', 'mm', 'A4')
         
