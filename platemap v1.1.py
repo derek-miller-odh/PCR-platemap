@@ -39,12 +39,18 @@ tryal = pd.read_excel(fullpath)
 class RunProgram:
     def __init__(self):
         self.start()
-        self.getTemplate()
-        self.getData()
-        self.chooseTemplate()
-        for plate in self.plates:
-            MakeExport(plate)
-            makePDF(plate.platemap,plate.name)
+        try:    
+            self.getTemplate()
+            self.getData()
+            self.chooseTemplate()
+        except:
+            logging.warning('Run Program class failed to initialize')
+        try:   
+            for plate in self.plates:
+                MakeExport(plate)
+                makePDF(plate.platemap,plate.name)
+        except:
+            logging.warning('Unable to create plates')
     def start(self):
         self.isrunning = True
     def getTemplate(self):
@@ -337,6 +343,7 @@ class MakeExport:
                                     f'{i}\t{self.data.loc[row,col]}\tOXA-24/40-like\tUNKN\n'+
                                     f'{i}\t{self.data.loc[row,col]}\tOXA-58-like\tUNKN\n'+
                                     f'{i}\t{self.data.loc[row,col]}\t16s (AO)\tUNKN\n')
+            i+=1
 class makePDF:
     def __init__(self, _df,_name):
         self.cellsize = 20
