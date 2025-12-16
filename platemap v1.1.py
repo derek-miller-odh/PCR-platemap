@@ -343,7 +343,7 @@ class MakeExport:
                                     f'{i}\t{self.data.loc[row,col]}\tOXA-24/40-like\tUNKN\n'+
                                     f'{i}\t{self.data.loc[row,col]}\tOXA-58-like\tUNKN\n'+
                                     f'{i}\t{self.data.loc[row,col]}\t16s (AO)\tUNKN\n')
-            i+=1
+                i+=1
 class makePDF:
     def __init__(self, _df,_name):
         self.cellsize = 20
