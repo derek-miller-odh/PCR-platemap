@@ -3,32 +3,58 @@ import datetime
 from fpdf import FPDF
 import re
 import os
+import logging
+
+logging.basicConfig(
+    filename = 'errors.log',
+    level = logging.DEBUG,
+    format= '%(asctime)s %(levelname)s %(name)s %(message)s'
+)
 
 fpath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/ABI7500 Importer/'
 ipath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/Imports/'
 ppath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/Platemaps/'
-rnumber = input('Please enter PCR run number: ')
+try:
+    rnumber = input('Please enter PCR run number: ')
+except:
+    logging.error('Error entering run number')
 reString = r"\.xlsx$"
-for file in os.listdir(fpath):
-    if re.search(reString, file):
-        fname = file
-        print(f"Found file: {fname}")
-fullpath = fpath+fname
+try:
+    flist = []
+    for file in os.listdir(fpath):
+        if re.search(reString, file):
+            flist.append(file)
+            fname = file
+            print(f"Found file: {fname}")
+    if len(flist) > 1:
+        logging.warning('Too many excel files found, please rerun with only one excel file')
+    elif len(flist) == 0:
+        logging.warning('No .xlsx file found')
+    fullpath = fpath+fname
+except:
+    logging.error("Error finding data file")
 pcols = range(1,13)
 prows = ['A','B','C','D','E','F','G','H']
 tryal = pd.read_excel(fullpath)
 class RunProgram:
     def __init__(self):
         self.start()
-        self.getTemplate()
-        self.getData()
-        self.chooseTemplate()
-        for plate in self.plates:
-            MakeExport(plate)
-            makePDF(plate.platemap,plate.name)
+        try:    
+            self.getTemplate()
+            self.getData()
+            self.chooseTemplate()
+        except:
+            logging.warning('Run Program class failed to initialize')
+        try:   
+            for plate in self.plates:
+                MakeExport(plate)
+                makePDF(plate.platemap,plate.name)
+        except:
+            logging.warning('Unable to create plates')
     def start(self):
         self.isrunning = True
     def getTemplate(self):
+        print(f'Creating Plate Template')
         data = {}
         for x in pcols:
             tmplist = []
@@ -37,20 +63,117 @@ class RunProgram:
             data[x] = tmplist
         self.template = Platemap(data,'Template')
     def getData(self):
+        print(f'Reading Excel File: {fullpath}')
         self.samples = pd.read_excel(fullpath)['Specimen'].to_list()
     def chooseTemplate(self):
         self.plates = []
         if len(self.samples) <=19:
+            print(f'Creating single quarter plate')
             self.plates = self.quarter()
             print(self.plates)
         elif len(self.samples)<=43:
+            print(f'Creating two half plates')
             self.plates = self.half()
             print(self.plates)
+        elif len(self.samples)<=62:
+            print(f'Creating three plates half:2 quarter:1')
+            self.plates = self.threeplates()
+            print(self.plates)
         elif len(self.samples)<=91:
+            print(f'Creating four whole plates')
             self.plates = self.whole()
             print(self.plates)
         else:
             print("too many samples please choose a different sample file")
+    def threeplates(self):
+        print('thinking...')
+        plate1 = pd.DataFrame(columns = self.template.platemap.columns, index = self.template.platemap.index)
+        plate2 = plate1.copy()
+        plate3 = plate1.copy()
+        i = 0
+        s = 0
+        for col in plate1.loc[:,1:6].columns:
+            for row in plate1.index:
+                if i == 0:
+                    print(f'Adding NTC to {row}{col} in plate 1')
+                    plate1.at[row,col] = 'NTC'
+                elif i == 1:
+                    print(f'Adding 1706 to {row}{col} in plate 1')
+                    plate1.at[row,col] = '1706'
+                elif i == 45:
+                    plate1.at[row,col] = ''
+                elif i == 46:
+                    print(f'Adding 1705 to {row}{col} in plate 1')
+                    plate1.at[row,col] = '1705'
+                elif i == 47:
+                    print(f'Adding 2146 to {row}{col} in plate 1')
+                    plate1.at[row,col] = '2146'
+                elif s <= 43:
+                    print(f'Adding {self.samples[s]} to {row}{col} in plate 1')
+                    plate1.at[row,col] = self.samples[s]
+                    s+=1
+                else: 
+                    plate1.at[row,col] = ''
+                i+=1
+                print(i)
+        print(f'Copying plate1 columns 1:6 to 7:12')
+        plate1[[7,8,9,10,11,12]] = plate1[[1,2,3,4,5,6]].copy()
+        print(plate1)
+        plate1.at['A',7] = 'NTC'
+        plate1.at['B',7] = '1706'
+        plate1.at['G',12] = '#0039' 
+        plate1.at['H',12] = '#0054'
+        plate2 = plate1.copy()
+        plate2.at['G',6] = '#0034'
+        plate2.at['H',6] = '#0092'
+        plate2.at['F',12] = '#0045'
+        plate2.at['G',12] = '#0036'
+        plate2.at['H',12] = '#0052'
+        i = 0
+        for col in plate3.loc[:,1:3].columns:
+            print(col)
+            for row in plate3.index:
+                print(f'plate3 {row}{col}')
+                if i==0:
+                    print(f'Adding NTC to {row}{col}')
+                    plate3.at[row,col] = 'NTC'        
+                elif i==1:
+                    plate3.at[row,col] = '1706'
+                    print(f'Adding 1706 to {row}{col}')
+                elif i ==22:
+                    plate3.at[row,col] = '1705'
+                    print(f'Adding 1705 to {row}{col}')
+                elif i == 23:
+                    plate3.at[row,col] = '2146'
+                    print(f'Adding 2146 to {row}{col}')
+                elif s < len(self.samples):
+                    print(f'Adding {self.samples[s]} to {row}{col}')
+                    plate3.at[row,col] = self.samples[s]
+                    s+=1
+                else:
+                    plate3.at[row,col] = ''
+                i+=1
+        print(plate3)
+        plate3[4] = plate3[1].copy()
+        plate3[5] = plate3[2].copy()
+        plate3[6] = plate3[3].copy()
+        plate3[7] = plate3[1].copy()
+        plate3[8] = plate3[2].copy()
+        plate3[9] = plate3[3].copy()
+        plate3[10] = plate3[1].copy()
+        plate3[11] = plate3[2].copy()
+        plate3[12] = plate3[3].copy()
+        plate3.at['G',6] = '#0039'
+        plate3.at['H',6] = '#0054'
+        plate3.at['G',9] = '#0034'
+        plate3.at['H',9] = '#0092'
+        plate3.at['F',12] = '#0045'
+        plate3.at['G',12] = '#0036'
+        plate3.at['H',12] = '#0052'
+        print(plate1)
+        print(plate2)
+        print(plate3)
+        return [Platemap(plate1,'KN'),Platemap(plate2,'IO'),Platemap(plate3,'KNVOIA')]
     def quarter(self):
         print(f'Creating Quarter Plate')
         plates = [pd.DataFrame(columns = self.template.platemap.columns, index = self.template.platemap.index)]
@@ -148,20 +271,20 @@ class RunProgram:
         for col in plate.columns:
             for row in plate.index:
                 if i==0:
-                    print(f'Adding NTC to {row}{col}')
+                    print(f'Adding NTC to {row}{col} in plate3')
                     plate.at[row,col] = 'NTC'
                         
                 elif i==1:
                         plate.at[row,col] = '1706'
-                        print(f'Adding 1706 to {row}{col}')
+                        print(f'Adding 1706 to {row}{col} in plate3')
                 elif i ==94:
                     plate.at[row,col] = '1705'
-                    print(f'Adding 1705 to {row}{col}')
+                    print(f'Adding 1705 to {row}{col} in plate3')
                 elif i == 95:
                     plate.at[row,col] = '2146'
-                    print(f'Adding 2146 to {row}{col}')
+                    print(f'Adding 2146 to {row}{col} in plate3')
                 elif s < len(self.samples):
-                    print(f'Adding {self.samples[s]} to {row}{col}')
+                    print(f'Adding {self.samples[s]} to {row}{col} in plate3')
                     plate.at[row,col] = self.samples[s]
                     s+=1
                 else:
@@ -188,7 +311,7 @@ class Platemap:
         return self.name
 class MakeExport:
     def __init__(self, _plate):
-            self.time = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            self.time = datetime.datetime.now().strftime("%Y%m%d")
             self.plate = _plate
             tmpname = f'{rnumber}_AR-CRO-PCR-ABI-7500_{self.time} - {self.plate.name}.txt'
             tmppath = ipath+tmpname
@@ -318,12 +441,13 @@ class MakeExport:
                                     f'{i}\t{self.data.loc[row,col]}\tOXA-24/40-like\tUNKN\n'+
                                     f'{i}\t{self.data.loc[row,col]}\tOXA-58-like\tUNKN\n'+
                                     f'{i}\t{self.data.loc[row,col]}\t16s (AO)\tUNKN\n')
+                i+=1
 class makePDF:
     def __init__(self, _df,_name):
         self.cellsize = 20
         self.xstart = 13.5
         self.data = _df
-        self.name = f'{rnumber}_AR-CRO-PCR-ABI-7500_ {datetime.datetime.now().strftime("%Y%m%d%H%M%S")} - {_name}'
+        self.name = f'{rnumber}_AR-CRO-PCR-ABI-7500_ {datetime.datetime.now().strftime("%Y%m%d")} - {_name}'
         self.cellorigins = [(15*x+13.5,15*y) for x in range(3,15) for y in range(3,11)]
         self.pdf = FPDF('L', 'mm', 'A4')
         
@@ -383,4 +507,3 @@ class makePDF:
 PROG = RunProgram()
 npath = f'{fpath}processed/{fname}'
 os.rename(fpath+fname, npath)
-
