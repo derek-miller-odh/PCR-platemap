@@ -167,7 +167,7 @@ class RunProgram:
         print(plate1)
         print(plate2)
         print(plate3)
-        return [Platemap(plate1,'KN'),Platemap(plate2,'IO'),Platemap(plate3,'KNVOIA')]
+        return [Platemap(plate1,'KV'),Platemap(plate2,'IO'),Platemap(plate3,'KNVOIA')]
     def quarter(self):
         print(f'Creating Quarter Plate')
         plates = [pd.DataFrame(columns = self.template.platemap.columns, index = self.template.platemap.index)]
@@ -389,6 +389,7 @@ class MakeExport:
         i=1
         for row in self.data.index:
             for col in self.data.columns:
+                print(col,'line 392')
                 if col in range(1,7):
                     self.file.write(f'{i}\t{self.data.loc[row,col]}\tKPC\tUNKN\n'+
                                     f'{i}\t{self.data.loc[row,col]}\tNDM\tUNKN\n'+
