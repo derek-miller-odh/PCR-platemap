@@ -4,21 +4,16 @@ from fpdf import FPDF
 import re
 import os
 import logging
-
+print('Searching for files')
+fpath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/ABI7500 Importer/'
+ipath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/Imports/'
+ppath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/Platemaps/'
+reString = r"\.xlsx$"
 logging.basicConfig(
     filename = 'errors.log',
     level = logging.DEBUG,
     format= '%(asctime)s %(levelname)s %(name)s %(message)s'
 )
-
-fpath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/ABI7500 Importer/'
-ipath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/Imports/'
-ppath = 'L:/Micro/AR-TB/AR/ABI7500 import - export files/Platemaps/'
-try:
-    rnumber = input('Please enter PCR run number: ')
-except:
-    logging.error('Error entering run number')
-reString = r"\.xlsx$"
 try:
     flist = []
     for file in os.listdir(fpath):
@@ -32,10 +27,21 @@ try:
         logging.warning('No .xlsx file found')
     fullpath = fpath+fname
 except:
+    print('No Files found')
     logging.error("Error finding data file")
+
+try:
+    rnumber = input('Please enter PCR run number: ')
+except:
+    logging.error('Error entering run number')
+
+
 pcols = range(1,13)
 prows = ['A','B','C','D','E','F','G','H']
-tryal = pd.read_excel(fullpath)
+try:
+    tryal = pd.read_excel(fullpath)
+except:
+    pass
 class RunProgram:
     def __init__(self):
         self.start()
@@ -54,7 +60,6 @@ class RunProgram:
     def start(self):
         self.isrunning = True
     def getTemplate(self):
-        print(f'Creating Plate Template')
         data = {}
         for x in pcols:
             tmplist = []
@@ -503,7 +508,15 @@ class makePDF:
         self.pdf.output(f'{ppath}{_pName}.pdf')
         print(f'PDF saved to {ppath}{_pName}.pdf')
         print('Sending to printer...')
-        os.startfile(f'{ppath}{_pName}.pdf','print')
+        try:
+            os.startfile(f'{ppath}{_pName}.pdf','print')
+        except:
+            print(f'Platemap failed to print, please print manually.')
 PROG = RunProgram()
-npath = f'{fpath}processed/{fname}'
-os.rename(fpath+fname, npath)
+try:
+    npath = f'{fpath}processed/{fname}'
+    print('Moving data to processed...')
+    os.rename(fpath+fname, npath)
+except:
+    pass
+input('')
